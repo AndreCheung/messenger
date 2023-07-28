@@ -10,12 +10,12 @@ from PIL import Image, ImageDraw
 # this a public webcam image shows a mountaintop at sunpeaks resort
 inputUrl ='https://www.sunpeaksresort.com/sites/default/files/webcams/ele_view_of_morrisey.jpg'
 # this is a LookOut camera endpoint
-lookoutUrl = 'https://lax.pop.roboticscats.com/api/detects?apiKey=bb8f59aeb27255f1201e12edf7ccfd79'
+lookoutUrl = ''
 lookoutName = 'CA-BC-SunPeaks'
 location = 'America/Los_Angeles'
 
 # detection interval is 60 for standard plan and 30 for premium plan respectively
-interval = 30
+interval = 60
 
 # working image file
 #temp_image = 'temp.jpg'
