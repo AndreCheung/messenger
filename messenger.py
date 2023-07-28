@@ -1,12 +1,15 @@
 #! python3
 # LookOutMessenger.py - Get image from webpage and sent it to LookOut
 # Last update: 20230728
-# Author: RoboticsCats.com
+# Author: Andre Cheung
+# Organizaton: RoboticsCats.com
 import sys, requests, os, time, datetime, pytz
 from PIL import Image, ImageDraw
 
 # global constants
+# this a public webcam image shows a mountaintop at sunpeaks resort
 inputUrl ='https://www.sunpeaksresort.com/sites/default/files/webcams/ele_view_of_morrisey.jpg'
+# this is a LookOut camera endpoint
 lookoutUrl = 'https://lax.pop.roboticscats.com/api/detects?apiKey=bb8f59aeb27255f1201e12edf7ccfd79'
 lookoutName = 'CA-BC-SunPeaks'
 location = 'America/Los_Angeles'
@@ -90,7 +93,8 @@ while cycle < MaxCycle:
     print('Detection cycle #' + str(cycle + 1) + '/' + str(MaxCycle) + ' : ' + location_now_str)
 
     header = 'roboticscats.com | ' + location_now_str
-    
+
+    # timestamp is added to the url to retrive the latest image
     res = requests.get(inputUrl + '?timestamp=' + str(round(time.time())))
     try:
         res.raise_for_status()
@@ -104,14 +108,10 @@ while cycle < MaxCycle:
     imageFile.close()
 
     # write timestamp on the image top left corner
-#    try:
     imageText = Image.open('temp.jpg')
     draw = ImageDraw.Draw(imageText)
     draw.text((10,10), header)
     imageText.save('temp.jpg')
-        
-#    except Exception as e:
-#        print(f"Error: {e}")
 
     result = upload_image(lookoutUrl, 'temp.jpg')
     
