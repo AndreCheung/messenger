@@ -7,7 +7,7 @@
 import sys, requests, os, time, datetime, pytz, re
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
-import openweather, uploadimage, textmyself
+import weather, uploadimage, textMyself
 
 # global constants unique to each LookOut camera endpoints
 # this am example of a public webcam image at sunpeaks resort
@@ -69,7 +69,7 @@ lastOWtime = utc_start
 
 # first time weather info check. Need to import weather
 # use weather_now = '' if don't use weather
-weather_now = weather(latitude, longitude)
+weather_now = weather.weather(latitude, longitude)
 
 # change current working directory to ~/Documents/python
 os.chdir(Path.home()/Path('Documents/python'))
@@ -100,7 +100,7 @@ while cycle < MaxCycle:
         
         # Check weather info at 10 minutes interval. Need to import weather
         if lastOWtime + datetime.timedelta(seconds=600) < utc_now:
-            weather_now = weather(latitude, longitude, apikey)
+            weather_now = weather.weather(latitude, longitude, apikey)
             lastOWtime = utc_now
             
         # Header includes local time and weather info
@@ -132,7 +132,7 @@ while cycle < MaxCycle:
             
         # if downloaded image is ready, then HTTP Post image to LookOut. Need to import uploadimage
         if inputReady:
-            result = upload_image(lookoutUrl, 'temp.jpg')
+            result = uploadimage.upload_image(lookoutUrl, 'temp.jpg')
             if result.status_code == 200:
                 if 'score' in result.text:
                     detection = detection + 1
