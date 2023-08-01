@@ -1,11 +1,13 @@
 #! python3
 # messenger.py - Get image from webpage, overlay local time and weather, and sent it to LookOut
 # LookOut Messeger is a free application for LookOut Wildfire Detection SaaS customers
-# Last update: 20230731
+# Last update: 20230801
 # Author: Andre Cheung
 # Organizaton: RoboticsCats.com
 import sys, requests, os, time, datetime, pytz, re
 from PIL import Image, ImageDraw, ImageFont
+from pathlib import Path
+import openweather, uploadimage, textmyself
 
 # global constants unique to each LookOut camera endpoints
 # this am example of a public webcam image at sunpeaks resort
@@ -17,8 +19,6 @@ location = 'Canada/Pacific'
 # camera GPS location
 latitude = 50.88
 longitude = 119.89
-# This is the OpenWeather API key. SECRET info.
-apikey=''
 # detection interval is 60 for standard plan and 30 for premium plan respectively
 interval = 60
 
@@ -26,54 +26,6 @@ interval = 60
 Font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf', 20)
 
 # Code below this lines work for all LookOut camera endpoints. Please do not modify.
-
-
-# upload image to LookOut via HTTP Post
-def upload_image(url, image_path):
-    try:
-        # Open the image file in binary mode and read its contents
-        with open(image_path, 'rb') as image_file:
-            image_data = image_file.read()
-            
-        image_file.close()
-
-        # Set the headers for the HTTP POST request
-        headers = {
-            'Content-Type': 'image/jpeg'  # Set the correct content type for JPEG images
-        }
-
-        # Make the HTTP POST request with the image data
-        response = requests.post(url, headers=headers, data=image_data)
-        return response
-    
-    except Exception as e:
-        print(f"Error: {e}")
-        return response
-
-# get current weather info (temperature, humidity, wind speed)
-def weather(lat,long, key):
-    # define the regexes
-    temperature = re.compile(r'("temp":)(\d?\d?\d.\d?\d?)')
-    humidity = re.compile(r'("humidity":)(\d?\d?\d)')
-    wind_speed = re.compile(r'("wind_speed":)(\d?\d?\d.\d?\d?)')
-    
-    url = 'https://api.openweathermap.org/data/3.0/onecall?lat=' + str(round(lat,4)) + '&lon=' + str(round(long,4)) + '&exclude=minutely,hourly,daily&units=metric&appid=' + str(key)
-    
-    try:
-        # call the OpenWeather API to get current weather
-        current = requests.get(url)
-
-        if current.status_code == 200:
-            t = temperature.search(current.text)
-            h = humidity.search(current.text)
-            w = wind_speed.search(current.text)
-                      
-            info = str(round(float(t.group(2)),1)) + chr(176) + 'C | ' + h.group(2) +' % | ' + w.group(2) + ' km/h'
-            return info
-
-    except Exception as e:
-        print(f"Error: {e}")
-        return('')
 
 
 # main program
@@ -114,7 +66,13 @@ location_start = utc_start.astimezone(pytz.timezone(location))
 
 # last time to call OpenWeather API
 lastOWtime = utc_start
-weather_now = weather(latitude, longitude, apikey)
+
+# first time weather info check. Need to import weather
+# use weather_now = '' if don't use weather
+weather_now = weather(latitude, longitude)
+
+# change current working directory to ~/Documents/python
+os.chdir(Path.home()/Path('Documents/python'))
 
 # create temp.jpg
 temp_image = Image.new('YCbCr', (1920, 1080))
@@ -139,11 +97,13 @@ while cycle < MaxCycle:
     
     # if HTTP Get successes
     if res.status_code == 200:
-        # Header includes local time and weather info. Check weather info every 10 minutes.
+        
+        # Check weather info at 10 minutes interval. Need to import weather
         if lastOWtime + datetime.timedelta(seconds=600) < utc_now:
             weather_now = weather(latitude, longitude, apikey)
             lastOWtime = utc_now
-        
+            
+        # Header includes local time and weather info
         header = 'roboticscats.com | ' + location_now_str + ' | ' + weather_now
 
         # Save the dowbloaded image to temp.jpg
@@ -170,12 +130,16 @@ while cycle < MaxCycle:
         except Exception as e:
             print(f"Error2: {e}")
             
-        # if downloaded image is ready, then HTTP Post image to LookOut
+        # if downloaded image is ready, then HTTP Post image to LookOut. Need to import uploadimage
         if inputReady:
             result = upload_image(lookoutUrl, 'temp.jpg')
             if result.status_code == 200:
                 if 'score' in result.text:
                     detection = detection + 1
+                    # send SMS via Twilio. Need to import textMyself
+                    #textMyself.textmyself('LookOut detects wildfire from the camera ' + lookoutName + )
+                    textMyself.textmyself('LookOut detects wildfire from the camera ' + lookoutName + '. Current weather: ' + weather_now)
+
             else:    
                 failure = failure + 1
         else:               
@@ -197,7 +161,8 @@ while cycle < MaxCycle:
        
     print('Time used in second: ' + str(round((dt.total_seconds()),2)) + '\n')
     #print('Last Time to OW API: ' + lastOWtime.strftime('%Y-%m-%d-%H:%M:%S'))
-    
+
+    # wait till next interval
     if MaxCycle > 1 and dt.total_seconds() < interval:
         time.sleep(interval - dt.total_seconds())
     
