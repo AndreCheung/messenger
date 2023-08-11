@@ -1,7 +1,7 @@
 #! python3
 # uploadimage.py - upload image via HTTP Post
 # Last update: 20230810: function call by thread
-# Developer: @roboticscats
+# Developer: @roboticscats, @jiansuo
 import requests, textMyself
 
 # upload image to LookOut via HTTP Post
