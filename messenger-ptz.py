@@ -2,7 +2,7 @@
 # messenger.py - Get images from camera, overlay local time and weather, and sent to LookOut
 # LookOut Messeger (beta) is a free application for LookOut Wildfire Detection SaaS customers
 # Last update: 20230810
-# Developer: RoboticsCats.com, @roboticscats
+# Developer: @roboticscats, @jiansuo
 import sys, requests, os, time, datetime, pytz, re, threading
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
