@@ -1,7 +1,7 @@
 #! python3
 # messenger.py - Get images from camera, overlay local time and weather, and sent to LookOut
 # LookOut Messeger (beta) is a free application for LookOut Wildfire Detection SaaS customers
-# Last update: 20230810
+# Last update: 20230814: add Flag_Overlay, Flag_Weather, Flag_SMS
 # Developer: @roboticscats, @jiansuo
 import sys, requests, os, time, datetime, pytz, re, threading
 from PIL import Image, ImageDraw, ImageFont
@@ -11,6 +11,10 @@ import weather, uploadimage
 
 # BELOW this line is customer-specific information
 # Global constants unique to each LookOut camera endpoints
+# The flags to turn on/off of local time overlay, weather info, and SMS alert
+Flag_Overlay = True
+Flag_Weather = False
+Flag_SMS = False
 lookoutName = 'your_camera_name'
 # your location for timezone info
 location = 'Asia/Hong_Kong'
@@ -88,7 +92,10 @@ location_start = utc_start.astimezone(pytz.timezone(location))
 
 # first time weather info check. Need to import weather
 # use weather_now = '' if don't use weather
-weather_now = weather.weather(latitude, longitude)
+if Flag_Weather:
+    weather_now = weather.weather(latitude, longitude)
+else:
+    weather_now = ''
 
 # last time to call OpenWeather API
 lastOWtime = utc_start
@@ -141,32 +148,33 @@ while cycle < MaxCycle:
         if res.status_code == 200:
         
             # Check weather info at 10 minutes interval. Need to import weather
-            if lastOWtime + datetime.timedelta(seconds=600) < position_utc_now:
-                weather_now = weather.weather(latitude, longitude)
-                lastOWtime = position_utc_now
-                #print('Last time to call OpenWeather API: ' + position_loc_now_str)
-            
-            # Header includes local time and weather info
-            header = 'roboticscats.com | ' + position_loc_now_str + ' | ' + weather_now
+            if Flag_Weather:
+                if lastOWtime + datetime.timedelta(seconds=600) < position_utc_now:
+                    weather_now = weather.weather(latitude, longitude)
+                    lastOWtime = position_utc_now
+                    #print('Last time to call OpenWeather API: ' + position_loc_now_str)
             
             # write respone image to file_path
             try:
                 inputReady = False
                 with file_path.open(mode='wb') as imageFile:
                     for chunk in res.iter_content(100000):
-                        imageFile.write(chunk)                      
+                        imageFile.write(chunk) 
+                inputReady = True
             except Exception as e:
                 print(f"Error1: {e}")
-                
-            # write timestamp and weather info on the image top left corner
-            try:
-               with Image.open(file_path) as imageText:
-                    draw = ImageDraw.Draw(imageText)
-                    draw.text((20,30), header, font=Font)
-                    imageText.save(file_path)
-                    inputReady = True
-            except Exception as e:
-                print(f"Error2: {e}")
+                            
+            # Header includes local time and weather info
+            if Flag_Overlay:
+                header = 'roboticscats.com | ' + position_loc_now_str + ' | ' + weather_now
+                # write timestamp and weather info on the image top left corner
+                try:
+                   with Image.open(file_path) as imageText:
+                        draw = ImageDraw.Draw(imageText)
+                        draw.text((20,30), header, font=Font)
+                        imageText.save(file_path)
+                except Exception as e:
+                    print(f"Error2: {e}")
             
             # HTTP Post image to LookOut
             if inputReady:
@@ -174,8 +182,11 @@ while cycle < MaxCycle:
                 message = lookoutName + '-' + str(guardtour[position]['preset']) + ' at ' + location_now_str + '. Weather: ' + weather_now
                 try:
                     # thread to achieve concurrent network uploads
-                    #uploadThread = threading.Thread(target=uploadimage.upload_image, args=(lookoutUrl, file_path))
-                    uploadThread = threading.Thread(target=uploadimage.upload_image_alert, args=(lookoutUrl, file_path, message))                    
+                    if Flag_SMS:
+                        message = lookoutName + '-' + str(guardtour[position]['preset']) + ' at ' + location_now_str + '. Weather: ' + weather_now
+                        uploadThread = threading.Thread(target=uploadimage.upload_image_alert, args=(lookoutUrl, file_path, message)) 
+                    else:
+                        uploadThread = threading.Thread(target=uploadimage.upload_image, args=(lookoutUrl, file_path))                                    
                     uploadThreads.append(uploadThread)
                     uploadThread.start()
                 except Exception as e:
